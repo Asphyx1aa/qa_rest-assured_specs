@@ -4,5 +4,6 @@ import lombok.Data;
 
 @Data
 public class UserResponseModel {
-    String name, job, id, createdAt;
+    Object data, support;
+    String id, name, year, color, pantone_value;
 }

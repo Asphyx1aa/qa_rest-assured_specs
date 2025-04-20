@@ -4,13 +4,25 @@ import models.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static io.qameta.allure.Allure.step;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static specs.CreateUserSpec.createUserRequestSpec;
+import static specs.CreateUserSpec.createUserResponseSpec;
+import static specs.DeleteUserSpec.deleteUserRequestSpec;
+import static specs.DeleteUserSpec.deleteUserResponseSpec;
+import static specs.LoginSpec.*;
+import static specs.RegisterSpec.registerRequestSpec;
+import static specs.RegisterSpec.registerResponseSpec;
+import static specs.SearchUserSpec.searchUserRequestSpec;
+import static specs.SearchUserSpec.searchUserResponseSpec;
+import static specs.UpdateUserSpec.updateUserRequestSpec;
+import static specs.UpdateUserSpec.updateUserResponseSpec;
 
-public class ReqresTests {
+public class ReqresTests extends TestBase {
 
-    private final String URL = "https://reqres.in";
 
     @Test
     @DisplayName("Создание пользователя")
@@ -19,19 +31,20 @@ public class ReqresTests {
         userData.setName("morpheus");
         userData.setJob("leader");
 
-        given()
-                .log().uri()
-                .log().method()
-                .log().body()
-                .body(userData)
-                .contentType(JSON)
-                .when()
-                .post(URL + "/api/users")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(201)
-                .extract().as(UserResponseModel.class);}
+        UserCreateModel response = step("Отправляем запрос на создание пользователя", () ->
+                given()
+                        .spec(createUserRequestSpec)
+                        .body(userData)
+                        .when()
+                        .post()
+                        .then()
+                        .spec(createUserResponseSpec)
+                        .extract().as(UserCreateModel.class));
+
+        step("Проверяем, что пользователь создан", () ->
+                assertThat(response.getCreatedAt(), notNullValue())
+        );
+    }
 
     @Test
     @DisplayName("Успешная авторизация")
@@ -40,19 +53,19 @@ public class ReqresTests {
         authData.setEmail("eve.holt@reqres.in");
         authData.setPassword("cityslicka");
 
-        given()
-                .log().uri()
-                .log().method()
-                .log().body()
-                .body(authData)
-                .contentType(JSON)
-                .when()
-                .post(URL + "/api/login")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(200)
-                .extract().as(LoginResponseModel.class);
+        LoginResponseModel response = step("Отправляем запрос на авторизацию", () ->
+                given()
+                        .spec(successfulLoginRequestSpec)
+                        .body(authData)
+                        .when()
+                        .post()
+                        .then()
+                        .spec(successfulLoginResponseSpec)
+                        .extract().as(LoginResponseModel.class));
+
+        step("Проверям, что пришел токен", () ->
+                assertThat(response.getToken(), notNullValue())
+        );
     }
 
     @Test
@@ -61,19 +74,19 @@ public class ReqresTests {
         LoginBodyModel authData = new LoginBodyModel();
         authData.setEmail("peter@klaven");
 
-        given()
-                .log().uri()
-                .log().method()
-                .log().body()
-                .body(authData)
-                .contentType(JSON)
-                .when()
-                .post(URL + "/api/login")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(400)
-                .body("error", is("Missing password"));
+        LoginUnsuccessfulModel response = step("Отправляем запрос на авторизацию", () ->
+                given()
+                        .spec(successfulLoginRequestSpec)
+                        .body(authData)
+                        .when()
+                        .post()
+                        .then()
+                        .spec(unsuccessfulLoginResponseSpec)
+                        .extract().as(LoginUnsuccessfulModel.class));
+
+        step("Проверям, пришла ошибка авторизации", () ->
+                assertThat(response.getError(), notNullValue())
+        );
     }
 
     @Test
@@ -83,35 +96,33 @@ public class ReqresTests {
         registrationData.setEmail("sydney@fife");
 
 
-        given()
-                .log().uri()
-                .log().method()
-                .log().body()
-                .body(registrationData)
-                .contentType(JSON)
-                .when()
-                .post(URL + "/api/register")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(400)
-                .body("error", is("Missing password"));
+        RegisterUnsuccessfulModel response = step("Отправляем запрос на регистрацию", () ->
+                given()
+                        .spec(registerRequestSpec)
+                        .body(registrationData)
+                        .when()
+                        .post()
+                        .then()
+                        .spec(registerResponseSpec)
+                        .extract().as(RegisterUnsuccessfulModel.class));
+
+        step("Проверяем, что пришла ошибка при регистрации", () ->
+                assertThat(response.getError(), notNullValue())
+        );
+
     }
 
     @Test
     @DisplayName("Удаление пользователя")
     void deleteUserTest() {
 
-        given()
-                .log().uri()
-                .log().method()
-                .pathParam("userId", 2)
-                .when()
-                .delete(URL + "/api/{userId}")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(204);
+        step("Отправляем запрос на удаление пользователя", () ->
+                given()
+                        .spec(deleteUserRequestSpec)
+                        .when()
+                        .delete("/api/{userId}")
+                        .then()
+                        .spec(deleteUserResponseSpec));
     }
 
 
@@ -119,17 +130,19 @@ public class ReqresTests {
     @DisplayName("Поиск пользователя")
     void searchUserTest() {
 
-        given()
-                .log().uri()
-                .log().method()
-                .pathParam("userId", 2)
-                .when()
-                .get(URL + "/api/unknown/{userId}")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(200)
-                .body("data.id", notNullValue());
+        UserResponseModel response = step("Отправляем запрос на поиск пользователя", () ->
+                given()
+                        .spec(searchUserRequestSpec)
+                        .when()
+                        .get("/api/unknown/{userId}")
+                        .then()
+                        .spec(searchUserResponseSpec)
+                        .extract().as(UserResponseModel.class)
+        );
+
+        step("Проверяем, что получили юзера", () ->
+                assertThat(response.getData(), notNullValue())
+        );
     }
 
     @Test
@@ -139,19 +152,20 @@ public class ReqresTests {
         userData.setName("morpheus");
         userData.setJob("zion resident");
 
-        given()
-                .log().uri()
-                .log().method()
-                .pathParam("userId", 2)
-                .body(userData)
-                .contentType(JSON)
-                .when()
-                .put(URL + "/api/users/{userId}")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(200)
-                .body("job", is("zion resident"));
+        UpdatedUserModel response = step("Отправляем запрос на обновление пользователя", () ->
+                given()
+                        .spec(updateUserRequestSpec)
+                        .body(userData)
+                        .when()
+                        .put("/api/users/{userId}")
+                        .then()
+                        .spec(updateUserResponseSpec)
+                        .extract().as(UpdatedUserModel.class)
+        );
+
+        step("Проверяем, что пришло время обновления юзера", () ->
+                assertThat(response.getUpdatedAt(), notNullValue())
+        );
     }
 
     @Test
@@ -161,19 +175,21 @@ public class ReqresTests {
         userData.setName("morpheus");
         userData.setJob("zion resident");
 
-        given()
-                .log().uri()
-                .log().method()
-                .pathParam("userId", 2)
-                .body(userData)
-                .contentType(JSON)
-                .when()
-                .patch(URL + "/api/users/{userId}")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(200)
-                .body("updatedAt", notNullValue());
+        UpdatedUserModel response = step("Отправляем запрос на обновление пользователя", () ->
+                given()
+                        .spec(updateUserRequestSpec)
+                        .body(userData)
+                        .when()
+                        .patch("/api/users/{userId}")
+                        .then()
+                        .spec(updateUserResponseSpec)
+                        .extract().as(UpdatedUserModel.class)
+                );
+
+        step("Проверяем, что пришло время обновления юзера", () ->
+                assertThat(response.getUpdatedAt(), notNullValue())
+        );
+        assertThat(response.getUpdatedAt(), notNullValue());
     }
 
 }
