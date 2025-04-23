@@ -6,20 +6,12 @@ import org.junit.jupiter.api.Test;
 
 import static io.qameta.allure.Allure.step;
 import static io.restassured.RestAssured.given;
-import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static specs.CreateUserSpec.createUserRequestSpec;
-import static specs.CreateUserSpec.createUserResponseSpec;
+import static specs.BaseSpecs.*;
 import static specs.DeleteUserSpec.deleteUserRequestSpec;
-import static specs.DeleteUserSpec.deleteUserResponseSpec;
-import static specs.LoginSpec.*;
-import static specs.RegisterSpec.registerRequestSpec;
-import static specs.RegisterSpec.registerResponseSpec;
 import static specs.SearchUserSpec.searchUserRequestSpec;
-import static specs.SearchUserSpec.searchUserResponseSpec;
 import static specs.UpdateUserSpec.updateUserRequestSpec;
-import static specs.UpdateUserSpec.updateUserResponseSpec;
 
 public class ReqresTests extends TestBase {
 
@@ -27,19 +19,17 @@ public class ReqresTests extends TestBase {
     @Test
     @DisplayName("Создание пользователя")
     void createUserTest() {
-        UserBodyModel userData = new UserBodyModel();
-        userData.setName("morpheus");
-        userData.setJob("leader");
+        UserBodyRequest userData = new UserBodyRequest("morpheus", "leader");
 
-        UserCreateModel response = step("Отправляем запрос на создание пользователя", () ->
+        UserCreateResponse response = step("Отправляем запрос на создание пользователя", () ->
                 given()
-                        .spec(createUserRequestSpec)
+                        .spec(baseSpec)
                         .body(userData)
                         .when()
-                        .post()
+                        .post("/users")
                         .then()
-                        .spec(createUserResponseSpec)
-                        .extract().as(UserCreateModel.class));
+                        .spec(responseSpec(201))
+                        .extract().as(UserCreateResponse.class));
 
         step("Проверяем, что пользователь создан", () ->
                 assertThat(response.getCreatedAt(), notNullValue())
@@ -49,19 +39,17 @@ public class ReqresTests extends TestBase {
     @Test
     @DisplayName("Успешная авторизация")
     void successfulLoginTest() {
-        LoginBodyModel authData = new LoginBodyModel();
-        authData.setEmail("eve.holt@reqres.in");
-        authData.setPassword("cityslicka");
+        LoginRequest authData = new LoginRequest("eve.holt@reqres.in", "cityslicka");
 
-        LoginResponseModel response = step("Отправляем запрос на авторизацию", () ->
+        LoginResponse response = step("Отправляем запрос на авторизацию", () ->
                 given()
-                        .spec(successfulLoginRequestSpec)
+                        .spec(baseSpec)
                         .body(authData)
                         .when()
-                        .post()
+                        .post("/login")
                         .then()
-                        .spec(successfulLoginResponseSpec)
-                        .extract().as(LoginResponseModel.class));
+                        .spec(responseSpec(200))
+                        .extract().as(LoginResponse.class));
 
         step("Проверям, что пришел токен", () ->
                 assertThat(response.getToken(), notNullValue())
@@ -71,18 +59,17 @@ public class ReqresTests extends TestBase {
     @Test
     @DisplayName("Неуспешная авторизация")
     void unsuccessfulLoginTest() {
-        LoginBodyModel authData = new LoginBodyModel();
-        authData.setEmail("peter@klaven");
+        LoginRequest authData = new LoginRequest("peter@klaven", "");
 
-        LoginUnsuccessfulModel response = step("Отправляем запрос на авторизацию", () ->
+        LoginUnsuccessfulResponse response = step("Отправляем запрос на авторизацию", () ->
                 given()
-                        .spec(successfulLoginRequestSpec)
+                        .spec(baseSpec)
                         .body(authData)
                         .when()
-                        .post()
+                        .post("/login")
                         .then()
-                        .spec(unsuccessfulLoginResponseSpec)
-                        .extract().as(LoginUnsuccessfulModel.class));
+                        .spec(responseSpec(400))
+                        .extract().as(LoginUnsuccessfulResponse.class));
 
         step("Проверям, пришла ошибка авторизации", () ->
                 assertThat(response.getError(), notNullValue())
@@ -92,19 +79,18 @@ public class ReqresTests extends TestBase {
     @Test
     @DisplayName("Неуспешная регистрация")
     void unsuccessfulRegisterTest() {
-        RegisterBodyModel registrationData = new RegisterBodyModel();
-        registrationData.setEmail("sydney@fife");
+        RegisterBodyRequest registrationData = new RegisterBodyRequest("sydney@fife", "");
 
 
-        RegisterUnsuccessfulModel response = step("Отправляем запрос на регистрацию", () ->
+        RegisterUnsuccessfulResponse response = step("Отправляем запрос на регистрацию", () ->
                 given()
-                        .spec(registerRequestSpec)
+                        .spec(baseSpec)
                         .body(registrationData)
                         .when()
-                        .post()
+                        .post("/register")
                         .then()
-                        .spec(registerResponseSpec)
-                        .extract().as(RegisterUnsuccessfulModel.class));
+                        .spec(responseSpec(400))
+                        .extract().as(RegisterUnsuccessfulResponse.class));
 
         step("Проверяем, что пришла ошибка при регистрации", () ->
                 assertThat(response.getError(), notNullValue())
@@ -120,9 +106,9 @@ public class ReqresTests extends TestBase {
                 given()
                         .spec(deleteUserRequestSpec)
                         .when()
-                        .delete("/api/{userId}")
+                        .delete("/{userId}")
                         .then()
-                        .spec(deleteUserResponseSpec));
+                        .spec(responseSpec(204)));
     }
 
 
@@ -130,14 +116,14 @@ public class ReqresTests extends TestBase {
     @DisplayName("Поиск пользователя")
     void searchUserTest() {
 
-        UserResponseModel response = step("Отправляем запрос на поиск пользователя", () ->
+        UserResponse response = step("Отправляем запрос на поиск пользователя", () ->
                 given()
                         .spec(searchUserRequestSpec)
                         .when()
-                        .get("/api/unknown/{userId}")
+                        .get("/unknown/{userId}")
                         .then()
-                        .spec(searchUserResponseSpec)
-                        .extract().as(UserResponseModel.class)
+                        .spec(responseSpec(200))
+                        .extract().as(UserResponse.class)
         );
 
         step("Проверяем, что получили юзера", () ->
@@ -148,19 +134,17 @@ public class ReqresTests extends TestBase {
     @Test
     @DisplayName("Обновление данных пользователя")
     void updateUserTest() {
-        UserBodyModel userData = new UserBodyModel();
-        userData.setName("morpheus");
-        userData.setJob("zion resident");
+        UserBodyRequest userData = new UserBodyRequest("morpheus", "zion resident");
 
-        UpdatedUserModel response = step("Отправляем запрос на обновление пользователя", () ->
+        UpdatedUserRequest response = step("Отправляем запрос на обновление пользователя", () ->
                 given()
                         .spec(updateUserRequestSpec)
                         .body(userData)
                         .when()
-                        .put("/api/users/{userId}")
+                        .put("/users/{userId}")
                         .then()
-                        .spec(updateUserResponseSpec)
-                        .extract().as(UpdatedUserModel.class)
+                        .spec(responseSpec(200))
+                        .extract().as(UpdatedUserRequest.class)
         );
 
         step("Проверяем, что пришло время обновления юзера", () ->
@@ -171,19 +155,17 @@ public class ReqresTests extends TestBase {
     @Test
     @DisplayName("Обновление данных пользователя")
     void updatePatchUserTest() {
-        UserBodyModel userData = new UserBodyModel();
-        userData.setName("morpheus");
-        userData.setJob("zion resident");
+        UserBodyRequest userData = new UserBodyRequest("morpheus", "zion resident");
 
-        UpdatedUserModel response = step("Отправляем запрос на обновление пользователя", () ->
+        UpdatedUserRequest response = step("Отправляем запрос на обновление пользователя", () ->
                 given()
                         .spec(updateUserRequestSpec)
                         .body(userData)
                         .when()
-                        .patch("/api/users/{userId}")
+                        .patch("/users/{userId}")
                         .then()
-                        .spec(updateUserResponseSpec)
-                        .extract().as(UpdatedUserModel.class)
+                        .spec(responseSpec(200))
+                        .extract().as(UpdatedUserRequest.class)
                 );
 
         step("Проверяем, что пришло время обновления юзера", () ->

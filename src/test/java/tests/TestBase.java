@@ -7,6 +7,6 @@ import static io.restassured.RestAssured.baseURI;
 public class TestBase {
     @BeforeAll
     static void testSetup() {
-        baseURI = "https://reqres.in";
+        baseURI = "https://reqres.in/api";
     }
 }

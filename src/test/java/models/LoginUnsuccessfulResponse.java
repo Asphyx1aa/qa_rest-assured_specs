@@ -3,6 +3,6 @@ package models;
 import lombok.Data;
 
 @Data
-public class LoginUnsuccessfulModel {
+public class LoginUnsuccessfulResponse {
     String error;
 }

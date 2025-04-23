@@ -3,6 +3,6 @@ package models;
 import lombok.Data;
 
 @Data
-public class UserCreateModel {
+public class UserCreateResponse {
     String name, job, id, createdAt;
 }

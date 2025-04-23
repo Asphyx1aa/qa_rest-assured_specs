@@ -10,24 +10,19 @@ import static io.restassured.filter.log.LogDetail.BODY;
 import static io.restassured.filter.log.LogDetail.STATUS;
 import static io.restassured.http.ContentType.JSON;
 
-public class LoginSpec {
-    public static RequestSpecification successfulLoginRequestSpec = with()
+public class BaseSpecs {
+    public static final RequestSpecification baseSpec = with()
             .filter(withCustomTemplates())
             .log().uri()
             .log().method()
             .log().body()
-            .contentType(JSON)
-            .basePath("/api/login");
+            .contentType(JSON);
 
-    public static ResponseSpecification successfulLoginResponseSpec = new ResponseSpecBuilder()
-            .expectStatusCode(200)
-            .log(STATUS)
-            .log(BODY)
-            .build();
-
-    public static ResponseSpecification unsuccessfulLoginResponseSpec = new ResponseSpecBuilder()
-            .expectStatusCode(400)
-            .log(STATUS)
-            .log(BODY)
-            .build();
+    public static ResponseSpecification responseSpec(int statusCode) {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(statusCode)
+                .log(STATUS)
+                .log(BODY)
+                .build();
+    }
 }

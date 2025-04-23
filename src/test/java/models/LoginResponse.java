@@ -3,6 +3,6 @@ package models;
 import lombok.Data;
 
 @Data
-public class LoginResponseModel {
+public class LoginResponse {
     String token;
 }
